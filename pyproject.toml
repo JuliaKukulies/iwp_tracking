@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "iwp_study"
+authors = [
+    {name = "Julia Kukulies", email = "kukulies@ucar.edu"},
+    {name = "Simon Pfreundschuh", email = "simon.pfreundschuh@colostate.edu"},
+]
+description = """
+A study the potential of ice water path (IWP) estimates for strom tracking.
+"""
+readme = "README.md"
+requires-python = ">=3.7"
+keywords = ["remote sensing", "satellite", "meteorology"]
+license = {text = "BSD-3-Clause"}
+classifiers = [
+    "Programming Language :: Python :: 3",
+]
+dynamic = ["version"]
+dependencies = [
+    "click",
+    ]
+
+[tool.setuptools]
+packages = ["iwp_tracking"]

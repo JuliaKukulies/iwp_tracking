@@ -1,0 +1,37 @@
+name: iwp_preprocessing
+channels:
+  - defaults
+dependencies:
+  - python=3.9
+  - pyresample
+  - matplotlib
+  - cartopy
+  - ca-certificates
+  - openssl
+  - geopandas
+  - certifi
+  - cryptography
+  - numpy
+  - cdsapi
+  - requests
+  - xarray
+  - pyproj
+  - appdirs
+  - boto3
+  - paramiko
+  - shapely
+  - ipyleaflet
+  - sphinx_rtd_theme
+  - pytest
+  - scipy
+  - beautifulsoup4
+  - lxml
+  - netcdf4
+  - hdf4
+  - hdf5
+  - pyarrow
+  - pyhdf
+  - h5py
+  - cfgrib
+  - tomlkit
+  - filelock
