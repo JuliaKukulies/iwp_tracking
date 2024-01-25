@@ -123,7 +123,7 @@ def resample_categorical(data: xr.DataArray, grid) -> xr.DataArray:
 
     precip_class_repr = ""
     for value, name in PRECIP_CLASSES.items():
-        precip_class_repr += f"{value} = {name}"
+        precip_class_repr += f"{value} = {name}; "
     data_r.attrs["classes"] = precip_class_repr
 
     return data_r
