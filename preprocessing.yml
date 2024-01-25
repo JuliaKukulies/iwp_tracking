@@ -1,5 +1,6 @@
 name: iwp_preprocessing
 channels:
+  - conda-forge
   - defaults
 dependencies:
   - python=3.9
@@ -35,3 +36,7 @@ dependencies:
   - cfgrib
   - tomlkit
   - filelock
+  - pip
+  - pip:
+    - "git+https://github.com/see-geo/pansat@f53727c39167fbdec502f0ded01e33641e67cacb"
+
