@@ -6,7 +6,6 @@ Email contact: kukulies@ucar.edu
 ---------------------------------
 
 """
-
 import xarray as xr 
 import numpy as np 
 import pandas as pd 
@@ -20,14 +19,13 @@ warnings.filterwarnings("ignore")
 
 # data paths
 data_path = Path('/glade/derecho/scratch/kukulies/ccic/ccic_2020/')
-savedir = Path('/glade/work/kukulies/CCIC/')
+savedir = Path('/glade/derecho/scratch/kukulies/ccic/')
 
 import sys
 months =  sys.argv[1:] 
 
 # 4km horizontal grid spacing, half-hourly data 
 dxy, dt  = 4000, 1800
-
 
 ################################ parameters for feature detection ####################################################
 
@@ -99,6 +97,9 @@ for month in months:
 
         
     if track_file.is_file() is True:
+        nr_days = calendar.monthrange(int(year), int(month))[1]
+        days = np.arange(1, nr_days + 1)
+        
         tracks = xr.open_dataset(track_file).to_dataframe()
         tracks_threshold1 = []
         tracks_threshold2 = []
@@ -138,8 +139,8 @@ for month in months:
             print(datetime.now(), str("Processing finished for " + str(year)+ str(month).zfill(2)) + str(day).zfill(2) , flush=True)
 
             ds.close()
-            out_ds1.close()
-            out_ds2.close()
+            tracks_threshold1.close()
+            tracks_threshold2.close()
             
     else:
         print(str(track_file) , '  already processed.', flush = True )
