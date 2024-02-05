@@ -58,8 +58,9 @@ def smooth_field(data: np.ndarray) -> np.ndarray:
         A numpy.ndarray containing the smoothed arrary.
     """
     k = get_smoothing_kernel(0.036, 0.01)
-    invalid = np.isnan(data)
-    data_r = np.nan_to_num(data, nan=0.0, copy=True)
+    invalid = np.isnan(data) + data < 0
+    data_r = data.copy()
+    data_r[invalid] = 0.0
 
     # FFT-based convolution can produce negative values so remove
     # them here.
