@@ -22,7 +22,7 @@ warnings.filterwarnings("ignore")
 
 # data paths
 data_path = Path('/glade/derecho/scratch/kukulies/ccic/ccic_2020/')
-savedir = Path('/glade/derecho/scratch/kukulies/ccic/tracking/')
+savedir = Path('/glade/derecho/scratch/kukulies/ccic/tracking/iwp/')
 
 # perform feature detection, segmentation and tracking for a specific month(s) 
 months =  sys.argv[1:] 
