@@ -61,61 +61,44 @@ parameters_features_dc = parameters_features.copy()
 parameters_segmentation_dc['threshold']= dc_threshold + 0.1
 parameters_features_dc['threshold']= dc_threshold
 
-############################# main tracking program ########################### #################################################
+################################################# main tracking program #####################################################################
 year = 2020
-segmentation_flag = True 
 
 for month in months:
-    print('Starting tracking procedure for', str(year), str(month), flush = True)
-    # check first if day has already been processed
-    track_file = Path(savedir /  ('tracks_iwp_'+ str(year) + str(month).zfill(2) +'.nc'))
-    # if no track file for this month exist yet, start the tracking procedure 
+    fnames = list(data_path.glob( ('*2020'+ str(month).zfill(2) +'*zarr')) )
+    ds = xr.open_mfdataset(fnames[0]) 
+    tiwp = ds.tiwp            
+    iwp_iris = tiwp.to_iris()
+
+
+    print('Starting tracking for', str(year), flush = True)
+    # check first if month has already been processed    
+    track_file = Path(savedir /  ('tracks_iwp_'+ str(year) + str(month).zfill(2) '.nc'))
     if track_file.is_file() is False:
         nr_days = calendar.monthrange(int(year), int(month))[1]
         days = np.arange(1, nr_days + 1)
-        feature_df_list = [] # list to store daily feature data frames
-        features_df_list_dc = []
-        
-        for day in days:
-            # read in global data and relevant variables for one day  
-            fnames = list(data_path.glob( ('*2020'+ str(month).zfill(2) + str(day).zfill(2) + '*zarr')) )  
-            ds = xr.open_mfdataset(fnames)
-            # field used for tracking: total ice water path 
-            tiwp = ds.tiwp           
-            # convert tracking field to iris 
-            iwp_iris = tiwp.to_iris()
-            print(datetime.now(), f"Commencing feature detection IWP for day ", str(day),  flush=True)
+        # read in all features within month                                                                                                                  
+        files     = list(savedir.glob(('features_*' +  str(year) + str(month).zfill(2) + '.nc' )))
+        files_opt = list(savedir.glob(('features_*' +  str(year) + str(month).zfill(2)  + '_opt.nc' )))
+        files_dc  = list(savedir.glob(('features_*' +  str(year) + str(month).zfill(2)  + '_dc.nc' )))
+        files.sort()
+        files_opt.sort()
+        files_dc.sort()
 
-            # run the feature detection on daily file 
-            features_d=tobac.feature_detection_multithreshold(iwp_iris ,dxy, **parameters_features)
-            # save daily features in list to use for a monthly tracking 
-            feature_df_list.append(features_d)
+        features_df_list     = []
+        features_df_list_opt = []
+        features_df_list_dc  = []
 
-            # run the segmentation on daily file  
-            print(datetime.now(), f"Commencing segmentation IWP", flush=True)
-            mask, features = tobac.segmentation_2D(features_d, iwp_iris, dxy, **parameters_segmentation)
-            # convert output tracks to xarray and save them to daily tracks for segmentation 
-            features = features.set_index(features.feature).to_xarray()
-            # save daily mask and feature files
-            xr.DataArray.from_iris(mask).to_netcdf(savedir / ('mask_iwp_'+ str(year) + str(month).zfill(2) + str(day).zfill(2) +  '.nc' ))
-            features.to_netcdf(savedir /  ('features_iwp_'+ str(year) + str(month).zfill(2) + str(day).zfill(2) + '.nc'))
+        for idx in np.arange(len(files)):
+            features_df_list.append( xr.open_dataset(files[idx]).to_dataframe())
+            features_df_list_opt.append(xr.open_dataset(files_opt[idx]).to_dataframe())
+            features_df_list_dc.append(xr.open_dataset(files_dc[idx]).to_dataframe())
 
-
-            # same for DC threshold
-            features_dc=tobac.feature_detection_multithreshold(iwp_iris ,dxy, **parameters_features_dc)
-            # save daily features in list to use for a monthly tracking 
-            feature_df_list_dc.append(features_dc)
-            mask_dc, features_dc = tobac.segmentation_2D(features_dc, iwp_iris, dxy, **parameters_segmentation_dc)
-            # convert output tracks to xarray and save them to daily tracks for segmentation 
-            features_dc = features_dc.set_index(features_dc.feature).to_xarray()
-            # save daily mask and feature files
-            xr.DataArray.from_iris(mask_dc).to_netcdf(savedir / ('mask_iwp_'+ str(year) + str(month).zfill(2) + str(day).zfill(2) +  '_dc.nc' ))
-            features_dc.to_netcdf(savedir /  ('features_iwp_'+ str(year) + str(month).zfill(2) + str(day).zfill(2) + '_dc.nc'))
-
-        # Combine all feature dataframes for one month
+        # Combine all feature dataframe for one month  
         features = tobac.utils.combine_tobac_feats(feature_df_list)
+        features_opt = tobac.utils.combine_tobac_feats(feature_df_list_opt)
         features_dc = tobac.utils.combine_tobac_feats(feature_df_list_dc)
-        
+
         ### Perform tracking on monthly basis ###
         print(datetime.now(), f"Commencing tracking IWP", flush=True)
         tracks = tobac.linking_trackpy(features, iwp_iris, dt, dxy, **parameters_linking)
@@ -129,8 +112,7 @@ for month in months:
         tracks_dc.to_xarray().to_netcdf( Path(savedir / ('tracks_iwp_'+ str(year) + str(month).zfill(2) +'_dc.nc')))
 
     # rerun the segmentation, but this time on the storm tracks instead of all features 
-    if track_file.is_file() is True and segmentation_flag is True:
-        
+    if track_file.is_file() is True:        
         ### segmentation on daily basis only for tracked storm objects ###
         for day in days:
             # read in data and relevant variables for one day  
@@ -144,17 +126,13 @@ for month in months:
             # segmentation IWP threshold  
             print(datetime.now(), f"Commencing segmentation IWP", flush=True)
             mask, tracks_day = tobac.segmentation_2D(tracks, iwp_iris, dxy, **parameters_segmentation)            
-            # convert output tracks to xarray and save them to daily tracks for segmentation 
             tracks_day= tracks_d.set_index(tracks.feature).to_xarray() 
-
-            # save daily mask and track files 
             xr.DataArray.from_iris(mask).to_netcdf(savedir / ('mask_storm_tracks_iwp_'+ str(year) + str(month).zfill(2) + str(day).zfill(2) + '.nc'))
-            tracks_day.to_netcdf(savedir /  ('features_storm_tracks_iwp_'+ str(year) + str(month).zfill(2) + str(day).zfill(2) + '.nc'))
+            tracks_day.to_netcdf(savedir /  ('features_storm_tracks_iwp_'+ str(year) + str(month).zfill(2) + str(day).zfill(2) + '.nc' ))
 
             # same for DC threshold   
             mask_dc, tracks_dc_day = tobac.segmentation_2D(tracks_dc, iwp_iris, dxy, **parameters_segmentation_dc)
             tracks_dc_day = tracks_dc_day.set_index(tracks.feature).to_xarray() 
-            # save daily mask and track files 
             xr.DataArray.from_iris(mask_dc).to_netcdf(savedir / ('mask_storm_tracks_iwp_'+ str(year) + str(month).zfill(2) + str(day).zfill(2) + '_dc.nc'))
             tracks_threshold_dc.to_netcdf(savedir /  ('features_storm_tracks_iwp_'+ str(year) + str(month).zfill(2) + str(day).zfill(2) + '_dc.nc'))
             print(datetime.now(), str("Processing finished for " + str(year)+ str(month).zfill(2)) + str(day).zfill(2) , flush=True)

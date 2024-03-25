@@ -62,6 +62,12 @@ parameters_segmentation_dc['threshold'] = dc_threshold + 0.1
 year = 2020
 
 for month in months:
+    # we jsut need one file as input for the tracking to show what the data structure looks like 
+    fnames = list(data_path.glob( ('merg_2020'+ str(month).zfill(2)+ '*nc4')) )
+    ds = xr.open_dataset(fnames[0])                                                    
+    tb = ds.Tb
+    tb_iris = tb.to_iris()
+    
     print('Starting tracking for', str(year), flush = True)
     # check first if month has already been processed
     track_file = Path(savedir /  ('tracks_tb_'+ str(year) + str(month).zfill(2) '.nc'))
@@ -145,10 +151,8 @@ for month in months:
             tracks_opt_day.to_netcdf(savedir /  ('features_storm_tracks_tb_'+ str(year) + str(month).zfill(2) + str(day).zfill(2) + '_opt.nc'))
 
             # segmentation threshold for DC threshold
-            mask_dc, tracks_dc_day = tobac.segmentation_2D(tracks_dc, tb_iris, dxy, **parameters_segmentation_dc)    
-            # convert output tracks to xarray and save them to daily tracks for segmentation 
+            mask_dc, tracks_dc_day = tobac.segmentation_2D(tracks_dc, tb_iris, dxy, **parameters_segmentation_dc)     
             tracks_dc_day = tracks_dc_day.set_index(tracks_dc_day.feature).to_xarray() 
-            # save daily mask and track files 
             xr.DataArray.from_iris(mask_dc).to_netcdf(savedir / ('mask_storm_tracks_tb_'+ str(year) + str(month).zfill(2) + str(day).zfill(2) + '_dc.nc'))
             tracks_opt_day.to_netcdf(savedir /  ('features_storm_tracks_tb_'+ str(year) + str(month).zfill(2) + str(day).zfill(2) + '_dc.nc'))
 
