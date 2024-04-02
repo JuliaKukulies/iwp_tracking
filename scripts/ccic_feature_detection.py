@@ -7,7 +7,6 @@ Email contact: kukulies@ucar.edu
 ---------------------------------
 
 """
-
 import xarray as xr 
 import numpy as np
 import sys
@@ -31,8 +30,8 @@ months =  sys.argv[1:]
 dxy, dt  = 4000, 1800
 
 ################################ parameters for feature detection ####################################################
-optimal_threshold = 0.2 
-dc_threshold = 2.0
+optimal_threshold = 0.24 
+dc_threshold = 2.6
 
 # parameters for feature detection                                                           
 parameters_features = {}
@@ -72,7 +71,7 @@ for month in months:
     # if no track file for this month exist yet, start the tracking procedure 
     for day in days:
         #check first if day has already been processed
-        output_file = Path(savedir / ('tracks_iwp_'+ str(year) + str(month).zfill(2) +'.nc'))
+        output_file = Path(savedir / ('features_iwp_'+ str(year) + str(month).zfill(2) + str(day).zfill(2) + '_dc.nc'))
         if output_file.is_file() is False:
             # read in global data and relevant variables for one day  
             fnames = list(data_path.glob(('*2020'+ str(month).zfill(2) + str(day).zfill(2) + '*zarr')))  

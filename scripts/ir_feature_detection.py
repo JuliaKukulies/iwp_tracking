@@ -81,7 +81,7 @@ for month in months:
     # run feature detection for each day
     for day in days:
         # check first if day has already been processed
-        output_file = Path(savedir /  ('features_tb_'+ str(year) + str(month).zfill(2) + str(day).zfill(2) + '.nc'))
+        output_file = Path(savedir /  ('features_tb_'+ str(year) + str(month).zfill(2) + str(day).zfill(2) + '_dc.nc'))
         if output_file.is_file() is False:
             # read in global data and relevant variables for one day
             fnames = list(data_path.glob( ('merg_2020'+ str(month).zfill(2) + str(day).zfill(2) + '*nc4')) )
