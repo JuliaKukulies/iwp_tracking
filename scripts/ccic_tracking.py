@@ -63,6 +63,8 @@ parameters_features_dc['threshold']= dc_threshold
 
 ################################################# main tracking program #####################################################################
 year = 2020
+# compression options 
+encoding = {"segmentation_mask": {'zlib': True}, {'dtype':'int8'}}
 
 for month in months:
     fnames = list(data_path.glob( ('*2020'+ str(month).zfill(2) +'*zarr')) )
@@ -136,15 +138,15 @@ for month in months:
                 # segmentation IWP threshold  
                 print(datetime.now(), f"Commencing segmentation IWP", flush=True)
                 mask, tracks_day = tobac.segmentation_2D(tracks, iwp_iris, dxy, **parameters_segmentation)            
-                tracks_day= tracks_d.set_index(tracks.feature).to_xarray() 
-                xr.DataArray.from_iris(mask).to_netcdf(savedir / ('mask_storm_tracks_iwp_'+ str(year) + str(month).zfill(2) + str(day).zfill(2) + '.nc'))
+                tracks_day= tracks_day.set_index(tracks_day.feature).to_xarray() 
+                xr.DataArray.from_iris(mask).to_netcdf(savedir / ('mask_storm_tracks_iwp_'+ str(year) + str(month).zfill(2) + str(day).zfill(2) + '.nc'), encoding = encoding)
                 tracks_day.to_netcdf(savedir /  ('features_storm_tracks_iwp_'+ str(year) + str(month).zfill(2) + str(day).zfill(2) + '.nc' ))
 
                 # same for DC threshold   
                 mask_dc, tracks_dc_day = tobac.segmentation_2D(tracks_dc, iwp_iris, dxy, **parameters_segmentation_dc)
-                tracks_dc_day = tracks_dc_day.set_index(tracks.feature).to_xarray() 
-                xr.DataArray.from_iris(mask_dc).to_netcdf(savedir / ('mask_storm_tracks_iwp_'+ str(year) + str(month).zfill(2) + str(day).zfill(2) + '_dc.nc'))
-                tracks_threshold_dc.to_netcdf(savedir /  ('features_storm_tracks_iwp_'+ str(year) + str(month).zfill(2) + str(day).zfill(2) + '_dc.nc'))
+                tracks_dc_day = tracks_dc_day.set_index(tracks_dc_day.feature).to_xarray() 
+                xr.DataArray.from_iris(mask_dc).to_netcdf(savedir / ('mask_storm_tracks_iwp_'+ str(year) + str(month).zfill(2) + str(day).zfill(2) + '_dc.nc'), encoding = encoding)
+                tracks_dc_day.to_netcdf(savedir /  ('features_storm_tracks_iwp_'+ str(year) + str(month).zfill(2) + str(day).zfill(2) + '_dc.nc'))
                 print(datetime.now(), str("Processing finished for " + str(year)+ str(month).zfill(2)) + str(day).zfill(2) , flush=True)
 
                 ds.close()
