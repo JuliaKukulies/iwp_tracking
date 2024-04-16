@@ -16,13 +16,14 @@ from pathlib import Path
 import tobac
 from datetime import datetime
 import calendar
-import ccic 
+import ccic
+from tqdm import tqdm 
 import warnings
 warnings.filterwarnings("ignore")
 
 # data paths
 data_path = Path('/glade/derecho/scratch/kukulies/ccic/ccic_2020/')
-savedir = Path('/glade/derecho/scratch/kukulies/ccic/tracking/iwp/')
+savedir = Path('/glade/derecho/scratch/kukulies/ccic/tracking/iwp/tracks/')
 
 # perform feature detection, segmentation and tracking for a specific month(s) 
 months =  sys.argv[1:] 
@@ -31,8 +32,8 @@ months =  sys.argv[1:]
 dxy, dt  = 4000, 1800
 
 ################################ parameters for feature detection ####################################################
-optimal_threshold = 0.18 
-dc_threshold = 1.0
+optimal_threshold = 0.24 
+dc_threshold = 2.6
 
 # parameters for feature detection                                                           
 parameters_features = {}
@@ -64,19 +65,21 @@ parameters_features_dc['threshold']= dc_threshold
 ################################################# main tracking program #####################################################################
 year = 2020
 # compression options 
-encoding = {"segmentation_mask": {'zlib': True}, {'dtype':'int8'}}
+encoding = {"segmentation_mask": {'zlib': True,'dtype':'int32' }}
 
 for month in months:
-    fnames = list(data_path.glob( ('*2020'+ str(month).zfill(2) +'*zarr')) )
-    ds = xr.open_mfdataset(fnames[0]) 
-    tiwp = ds.tiwp            
-    iwp_iris = tiwp.to_iris()
-
-
-    print('Starting tracking for', str(year), flush = True)
-    # check first if month has already been processed    
     track_file = Path(savedir /  ('tracks_iwp_'+ str(year) + str(month).zfill(2) +'.nc'))
     if track_file.is_file() is False:
+        fnames = list(data_path.glob( ('*2020'+ str(month).zfill(2) +'*zarr')) )
+        fnames.sort()
+        ds = xr.open_dataset(fnames[0])
+        for filename in fnames:
+            ds = xr.concat([ds, xr.open_dataset(filename)], dim = 'time')
+        #ds = xr.open_mfdataset(fnames[0]) 
+        tiwp = ds.tiwp            
+        iwp_iris = tiwp.to_iris()
+
+        print('Starting tracking for', str(year), flush = True)
         nr_days = calendar.monthrange(int(year), int(month))[1]
         days = np.arange(1, nr_days + 1)
         # read in all features within month                                                                                                                  
@@ -117,19 +120,24 @@ for month in months:
     if track_file.is_file() is True:
         nr_days = calendar.monthrange(int(year), int(month))[1]
         days = np.arange(1, nr_days + 1 )
-
-        # read in track file                                                                                                           
+        
+        # read in track file                                 
         tracks     = xr.open_dataset(track_file).to_dataframe()
         tracks_dc  = xr.open_dataset(Path(savedir /  ('tracks_iwp_'+ str(year) + str(month).zfill(2) +'_dc.nc'))).to_dataframe()
         
         ### segmentation on daily basis only for tracked storm objects ###
         for day in days:
+            print('getting CCIC for segmentation', str(day), flush = True)
             # check if this has alrady been done for the day                                                                           
-            fname = Path(savedir / ('features_storm_tracks_iwp_' +  str(year) + str(month).zfill(2) + str(day).zfill(2) + '_dc.nc'))
+            fname = Path(savedir / ('mask_storm_tracks_iwp_' +  str(year) + str(month).zfill(2) + str(day).zfill(2) + '_dc.nc'))
             if fname.is_file() is False:
                 # read in data and relevant variables for one day  
-                fnames = list(data_path.glob( ('*2020'+ str(month).zfill(2) + str(day).zfill(2) + '*zarr')) )  
-                ds = xr.open_mfdataset(fnames)
+                fnames = list(data_path.glob( ('*2020'+ str(month).zfill(2) + str(day).zfill(2) + '*zarr')) )
+                fnames.sort()
+                ds = xr.open_dataset(fnames[0])
+                for filename in tqdm(fnames[1:]):
+                    ds = xr.concat([ds, xr.open_dataset(filename)], dim = 'time')
+                #ds = xr.open_mfdataset(fnames)
                 # field used for tracking: total ice water path 
                 tiwp = ds.tiwp           
                 # convert tracking field to iris 
@@ -137,13 +145,17 @@ for month in months:
 
                 # segmentation IWP threshold  
                 print(datetime.now(), f"Commencing segmentation IWP", flush=True)
-                mask, tracks_day = tobac.segmentation_2D(tracks, iwp_iris, dxy, **parameters_segmentation)            
+                input_tracks = tracks[tracks.time.dt.day == day]
+                input_tracks['feature'] = input_tracks.index.values
+                mask, tracks_day = tobac.segmentation_2D(input_tracks, iwp_iris, dxy, **parameters_segmentation)            
                 tracks_day= tracks_day.set_index(tracks_day.feature).to_xarray() 
                 xr.DataArray.from_iris(mask).to_netcdf(savedir / ('mask_storm_tracks_iwp_'+ str(year) + str(month).zfill(2) + str(day).zfill(2) + '.nc'), encoding = encoding)
                 tracks_day.to_netcdf(savedir /  ('features_storm_tracks_iwp_'+ str(year) + str(month).zfill(2) + str(day).zfill(2) + '.nc' ))
 
-                # same for DC threshold   
-                mask_dc, tracks_dc_day = tobac.segmentation_2D(tracks_dc, iwp_iris, dxy, **parameters_segmentation_dc)
+                # same for DC threshold
+                input_tracks_dc = tracks_dc[tracks_dc.time.dt.day == day]
+                input_tracks_dc['feature'] = input_tracks_dc.index.values
+                mask_dc, tracks_dc_day = tobac.segmentation_2D(input_tracks_dc, iwp_iris, dxy, **parameters_segmentation_dc)
                 tracks_dc_day = tracks_dc_day.set_index(tracks_dc_day.feature).to_xarray() 
                 xr.DataArray.from_iris(mask_dc).to_netcdf(savedir / ('mask_storm_tracks_iwp_'+ str(year) + str(month).zfill(2) + str(day).zfill(2) + '_dc.nc'), encoding = encoding)
                 tracks_dc_day.to_netcdf(savedir /  ('features_storm_tracks_iwp_'+ str(year) + str(month).zfill(2) + str(day).zfill(2) + '_dc.nc'))
