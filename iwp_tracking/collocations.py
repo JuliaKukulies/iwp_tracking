@@ -5,8 +5,8 @@ iwp_tracking.collocations
 Functionality for extracting collocations between GPM DPR and TOBAC tracks.
 """
 import logging
-from pyresample.geometry import AreaDefinition
 from math import ceil
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -16,8 +16,9 @@ from pansat.geometry import LonLatRect
 from pansat.time import to_datetime
 from pansat.environment import get_index
 from pansat.granule import merge_granules
-from pyresample.geometry import SwathDefinition
+from pyresample.geometry import AreaDefinition, SwathDefinition
 from pyresample import kd_tree
+from tqdm import tqdm
 
 
 LOGGER = logging.getLogger(__name__)
@@ -116,7 +117,6 @@ def resample_data(
         else:
             fill_value = np.nan
 
-        print(var)
         data_r = kd_tree.get_sample_from_neighbour_info(
             "nn", target.shape, data, ind_in, ind_out, inds, fill_value=fill_value
         )
@@ -140,6 +140,7 @@ def resample_data(
 def extract_collocations(
     track_data: pd.DataFrame,
     pansat_product,
+    output_path,
     max_time_diff: np.timedelta64 = np.timedelta64(15, "m"),
 ):
     """
@@ -151,8 +152,10 @@ def extract_collocations(
         pansat_product: The pansat product to collocate the tracks with.
         max_time_diff: Half width of the time interval center on the track
             time step in which collocations will be considered.
+        output_path: The output path to which to write the extracted
+            collocations.
     """
-    for feature, row in track_data.iterrows():
+    for feature, row in tqdm(track_data.iterrows()):
         lon = row.longitude
         lat = row.latitude
         time = row.time
@@ -182,9 +185,7 @@ def extract_collocations(
                     time,
                 )
 
-                product_data = granule.open().rename(
-                    {"latitude_ns": "latitude", "longitude_ns": "longitude"}
-                )[{"frequencies": -1}]
+                product_data = granule.open()[{"frequencies": -1}]
                 target_area = get_equal_area_grid(
                     lon, lat, resolution=5e3, extent=1000e3
                 )
@@ -197,4 +198,5 @@ def extract_collocations(
 
                 time_str = to_datetime(row.time).strftime("%Y%m%d%H%M")
                 filename = f"{row.cell}_{feature}_{time_str}.nc"
-                resampled.to_netcdf(filename)
+
+                resampled.to_netcdf(output_path / filename)

@@ -121,6 +121,7 @@ def resample_categorical(data: xr.DataArray, grid) -> xr.DataArray:
         method="nearest",
         kwargs={"fill_value": -3},
     )
+    data_r.data = np.nan_to_num(data_r.data, nan=-3, copy=True).astype("int8")
 
     precip_class_repr = ""
     for value, name in PRECIP_CLASSES.items():
